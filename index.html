@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Lab - Sound Simulation</title>
+    <style>
+        :root {
+            --bg-color: #050a0f;
+            --panel-bg: rgba(6, 18, 26, 0.95);
+            --accent-cyan: #00f2ff;
+            --accent-pink: #ff2d55;
+            --border-glow: rgba(0, 242, 255, 0.3);
+            --text-dim: #708090;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background-image: 
+                linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        canvas { display: block; }
+
+        /* Sidebar UI */
+        .ui-panel {
+            position: absolute;
+            z-index: 10;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-glow);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .lab-config {
+            top: 20px;
+            left: 20px;
+            width: 280px;
+        }
+
+        .research-data {
+            top: 20px;
+            right: 20px;
+            width: 320px;
+        }
+
+        h3 {
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .menu-item {
+            background: transparent;
+            border: 1px solid #1a3a4a;
+            color: var(--accent-cyan);
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+            transition: 0.3s;
+        }
+
+        .menu-item.active {
+            background: var(--accent-cyan);
+            color: var(--bg-color);
+            font-weight: bold;
+        }
+
+        .control-group {
+            margin-top: 20px;
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--accent-pink);
+            margin-bottom: 5px;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: var(--accent-pink);
+            background: #1a3a4a;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+
+        .data-val { color: var(--accent-cyan); font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <canvas id="mainCanvas"></canvas>
+    </div>
+
+    <div class="ui-panel lab-config">
+        <h3><span>⚙</span> Lab Configuration</h3>
+        <button class="menu-item" style="border-color: var(--accent-pink); color: var(--accent-pink);">Theory & Objectives</button>
+        <button class="menu-item active">1. Speed & Temperature</button>
+        <button class="menu-item">2. Doppler Effect</button>
+        <button class="menu-item">3. Sonar Echo Depth</button>
+
+        <div class="control-group">
+            <label>MATERIAL <span>Air (Variable)</span></label>
+            <div style="color:var(--accent-cyan); font-size: 0.8rem; border:1px solid #1a3a4a; padding:5px; border-radius:4px;">Air (Variable) ▾</div>
+        </div>
+
+        <div class="control-group">
+            <label>TEMP (TC) <span id="temp-val">-34°C</span></label>
+            <input type="range" id="temp-slider" min="-100" max="100" value="-34">
+        </div>
+
+        <div class="control-group">
+            <label>FREQUENCY <span id="freq-val">100 HZ</span></label>
+            <input type="range" id="freq-slider" min="50" max="500" value="100">
+        </div>
+    </div>
+
+    <div class="ui-panel research-data">
+        <h3 style="color: var(--accent-pink);">ⓘ Research Data</h3>
+        <div class="data-row">
+            <span>Velocity (v):</span>
+            <span class="data-val" id="vel-display">310.60 m/s</span>
+        </div>
+        <div class="data-row">
+            <span>Wavelength (λ):</span>
+            <span class="data-val" id="wave-display">3.11 m</span>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #1a3a4a;">
+        <div style="font-size: 0.9rem;">Status: <span style="color: var(--accent-cyan)">Simulating: Air Molecules</span></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const tempSlider = document.getElementById('temp-slider');
+        const freqSlider = document.getElementById('freq-slider');
+        
+        let width, height;
+        let particles = [];
+        let waveOffset = 0;
+
+        // Audio Setup
+        let audioCtx, oscillator, gainNode;
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            oscillator = audioCtx.createOscillator();
+            gainNode = audioCtx.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+            oscillator.start();
+        }
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initParticles();
+        }
+
+        function initParticles() {
+            particles = [];
+            for(let i=0; i<150; i++) {
+                particles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    size: Math.random() * 2
+                });
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            
+            const freq = parseInt(freqSlider.value);
+            const temp = parseInt(tempSlider.value);
+            
+            // Physics Calc
+            const velocity = 331.3 * Math.sqrt(1 + temp/273.15);
+            const wavelength = velocity / freq;
+
+            document.getElementById('temp-val').innerText = `${temp}°C`;
+            document.getElementById('freq-val').innerText = `${freq} HZ`;
+            document.getElementById('vel-display').innerText = `${velocity.toFixed(2)} m/s`;
+            document.getElementById('wave-display').innerText = `${wavelength.toFixed(2)} m`;
+
+            if (audioCtx) {
+                oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1);
+            }
+
+            // Draw Particles (Air Molecules)
+            ctx.fillStyle = "rgba(255,255,255,0.5)";
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.fill();
+            });
+
+            // Draw Sine Wave at bottom
+            ctx.beginPath();
+            ctx.strokeStyle = "#00f2ff";
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#00f2ff";
+
+            for(let x=0; x<width; x++) {
+                const y = height - 50 + Math.sin((x + waveOffset) * (freq/5000)) * 40;
+                if(x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            waveOffset -= (velocity / 50);
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resize);
+        window.addEventListener('mousedown', () => {
+            initAudio();
+            gainNode.gain.setTargetAtTime(0.05, audioCtx.currentTime, 0.1);
+        });
+        window.addEventListener('mouseup', () => {
+            if(gainNode) gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+        });
+
+        resize();
+        animate();
+    </script>
+</body>
+</html>
