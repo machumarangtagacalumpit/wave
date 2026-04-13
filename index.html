@@ -11,7 +11,6 @@
             --accent-cyan: #00f2ff;
             --accent-pink: #ff2d55;
             --border-glow: rgba(0, 242, 255, 0.3);
-            --text-dim: #708090;
         }
 
         body, html {
@@ -39,7 +38,6 @@
 
         canvas { display: block; }
 
-        /* Sidebar UI */
         .ui-panel {
             position: absolute;
             z-index: 10;
@@ -74,26 +72,19 @@
         }
 
         .menu-item {
-            background: transparent;
-            border: 1px solid #1a3a4a;
-            color: var(--accent-cyan);
+            background: var(--accent-cyan);
+            color: var(--bg-color);
+            border: none;
             padding: 12px;
             margin: 8px 0;
             border-radius: 6px;
-            cursor: pointer;
             width: 100%;
             text-align: left;
-            transition: 0.3s;
-        }
-
-        .menu-item.active {
-            background: var(--accent-cyan);
-            color: var(--bg-color);
             font-weight: bold;
         }
 
         .control-group {
-            margin-top: 20px;
+            margin-top: 25px;
         }
 
         label {
@@ -101,13 +92,14 @@
             justify-content: space-between;
             font-size: 0.8rem;
             color: var(--accent-pink);
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
 
         input[type=range] {
             width: 100%;
             accent-color: var(--accent-pink);
             background: #1a3a4a;
+            cursor: pointer;
         }
 
         .data-row {
@@ -128,15 +120,8 @@
 
     <div class="ui-panel lab-config">
         <h3><span>⚙</span> Lab Configuration</h3>
-        <button class="menu-item" style="border-color: var(--accent-pink); color: var(--accent-pink);">Theory & Objectives</button>
-        <button class="menu-item active">1. Speed & Temperature</button>
-        <button class="menu-item">2. Doppler Effect</button>
-        <button class="menu-item">3. Sonar Echo Depth</button>
-
-        <div class="control-group">
-            <label>MATERIAL <span>Air (Variable)</span></label>
-            <div style="color:var(--accent-cyan); font-size: 0.8rem; border:1px solid #1a3a4a; padding:5px; border-radius:4px;">Air (Variable) ▾</div>
-        </div>
+        
+        <div class="menu-item">1. Speed & Temperature</div>
 
         <div class="control-group">
             <label>TEMP (TC) <span id="temp-val">-34°C</span></label>
@@ -169,11 +154,7 @@
         const tempSlider = document.getElementById('temp-slider');
         const freqSlider = document.getElementById('freq-slider');
         
-        let width, height;
-        let particles = [];
-        let waveOffset = 0;
-
-        // Audio Setup
+        let width, height, particles = [], waveOffset = 0;
         let audioCtx, oscillator, gainNode;
 
         function initAudio() {
@@ -181,7 +162,6 @@
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             oscillator = audioCtx.createOscillator();
             gainNode = audioCtx.createGain();
-            
             oscillator.type = 'sine';
             oscillator.connect(gainNode);
             gainNode.connect(audioCtx.destination);
@@ -192,27 +172,16 @@
         function resize() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
-            initParticles();
-        }
-
-        function initParticles() {
             particles = [];
             for(let i=0; i<150; i++) {
-                particles.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    size: Math.random() * 2
-                });
+                particles.push({ x: Math.random() * width, y: Math.random() * height, size: Math.random() * 2 });
             }
         }
 
         function animate() {
             ctx.clearRect(0, 0, width, height);
-            
             const freq = parseInt(freqSlider.value);
             const temp = parseInt(tempSlider.value);
-            
-            // Physics Calc
             const velocity = 331.3 * Math.sqrt(1 + temp/273.15);
             const wavelength = velocity / freq;
 
@@ -221,32 +190,23 @@
             document.getElementById('vel-display').innerText = `${velocity.toFixed(2)} m/s`;
             document.getElementById('wave-display').innerText = `${wavelength.toFixed(2)} m`;
 
-            if (audioCtx) {
-                oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1);
-            }
+            if (audioCtx) oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1);
 
-            // Draw Particles (Air Molecules)
-            ctx.fillStyle = "rgba(255,255,255,0.5)";
+            ctx.fillStyle = "rgba(255,255,255,0.3)";
             particles.forEach(p => {
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
                 ctx.fill();
             });
 
-            // Draw Sine Wave at bottom
             ctx.beginPath();
             ctx.strokeStyle = "#00f2ff";
             ctx.lineWidth = 3;
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = "#00f2ff";
-
             for(let x=0; x<width; x++) {
                 const y = height - 50 + Math.sin((x + waveOffset) * (freq/5000)) * 40;
-                if(x === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
+                if(x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
             }
             ctx.stroke();
-            ctx.shadowBlur = 0;
 
             waveOffset -= (velocity / 50);
             requestAnimationFrame(animate);
