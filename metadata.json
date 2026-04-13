@@ -1,0 +1,5 @@
+{
+  "name": "Physics 202: Sound Laboratory",
+  "description": "An interactive physics laboratory for exploring sound waves, speed of sound, Doppler effect, and sonar technology.",
+  "requestFramePermissions": []
+}
