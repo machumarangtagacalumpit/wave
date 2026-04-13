@@ -1,13 +1,54 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Physics 202: Laboratory</title>
-  </head>
-  <body>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@19/?dev",
+        "react-dom/client": "https://esm.sh/react-dom@19/client?dev",
+        "lucide-react": "https://esm.sh/lucide-react",
+        "motion": "https://esm.sh/motion"
+      }
+    }
+    </script>
+</head>
+<body class="bg-slate-50">
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
 
+    <script type="module">
+        import React from 'react';
+        import { createRoot } from 'react-dom/client';
+        // Note: You can import other libs here like 'lucide-react' if needed
+
+        function App() {
+            return (
+                <div className="flex flex-col items-center justify-center min-h-screen font-sans">
+                    <header className="text-center p-8 bg-white shadow-lg rounded-xl border border-slate-200">
+                        <h1 className="text-4xl font-bold text-slate-800 mb-2">
+                            Physics 202: Laboratory
+                        </h1>
+                        <p className="text-slate-600 italic">
+                            React 19 + Tailwind v4 Environment
+                        </p>
+                        <div className="mt-6">
+                            <button 
+                                onClick={() => alert('Lab system ready!')}
+                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                Start Experiment
+                            </button>
+                        </div>
+                    </header>
+                </div>
+            );
+        }
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
+</body>
+</html>
